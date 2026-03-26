@@ -52,12 +52,13 @@
             margin-bottom: 5px;
             font-weight: bold;
         }
-        select {
+        select, input[type="text"] {
             width: 100%;
             padding: 10px;
             border-radius: 5px;
             border: 1px solid #ccc;
             font-size: 16px;
+            box-sizing: border-box; /* Asegura que el padding no desborde el ancho */
         }
         button {
             padding: 12px 20px;
@@ -89,6 +90,11 @@
 
     <div class="container">
         <h1>Registro de Revisión</h1>
+
+        <div class="form-group">
+            <label for="userName">Nombre del Revisor:</label>
+            <input type="text" id="userName" placeholder="Ingresa tu nombre">
+        </div>
         
         <div class="form-group">
             <label for="opcion1">Primera Opción (Categoría/Tipo):</label>
@@ -134,11 +140,10 @@
         // 1. Cargar historial del LocalStorage
         let clickHistory = JSON.parse(localStorage.getItem('registroRevision')) || [];
         
-        // Referencias a los contadores en el HTML
         const counterCasoDisplay = document.getElementById('counterCaso');
         const counterHojaDisplay = document.getElementById('counterHoja');
 
-        // Función para actualizar los números en pantalla al cargar
+        // Función para actualizar pantalla
         function actualizarPantalla() {
             const totalCasos = clickHistory.filter(item => item.tipo === 'Caso').length;
             const totalHojas = clickHistory.filter(item => item.tipo === 'Hoja').length;
@@ -146,17 +151,18 @@
             counterHojaDisplay.innerText = totalHojas;
         }
         
-        actualizarPantalla(); // Se ejecuta al abrir la página
+        actualizarPantalla();
 
-        // 2. Función principal para registrar el clic
+        // 2. Registrar clic
         function registrarClic(tipoClic) {
+            const nombreUsuario = document.getElementById('userName').value.trim() || 'Sin_Nombre';
             const op1 = document.getElementById('opcion1').value;
             const op2 = document.getElementById('opcion2').value;
             const now = new Date();
-            const timeString = now.toLocaleString('es-CO'); // Fecha y hora local
+            const timeString = now.toLocaleString('es-CO'); 
             
-            // Creamos un objeto con toda la información del momento del clic
             const nuevoRegistro = {
+                nombre: nombreUsuario,
                 tipo: tipoClic,
                 fecha: timeString,
                 seleccion1: op1,
@@ -169,32 +175,42 @@
             actualizarPantalla();
         }
 
-        // Asignar los eventos a los botones
         document.getElementById('btnCaso').addEventListener('click', () => registrarClic('Caso'));
         document.getElementById('btnHoja').addEventListener('click', () => registrarClic('Hoja'));
 
-        // 3. Exportar a CSV (Actualizado para las nuevas columnas)
+        // 3. Exportar a CSV
         document.getElementById('exportBtn').addEventListener('click', () => {
             if (clickHistory.length === 0) {
                 alert('No hay registros para exportar.');
                 return;
             }
 
-            // Cabeceras del archivo CSV
-            let csvContent = "ID,Tipo de Registro,Fecha y Hora,Opción 1,Opción 2\n";
+            // Cabeceras actualizadas con el Nombre
+            let csvContent = "ID,Nombre,Tipo de Registro,Fecha y Hora,Opción 1,Opción 2\n";
             
-            // Llenar las filas
             clickHistory.forEach((registro, index) => {
-                // Las comillas evitan errores si las opciones tienen comas en su texto
-                csvContent += `${index + 1},"${registro.tipo}","${registro.fecha}","${registro.seleccion1}","${registro.seleccion2}"\n`;
+                csvContent += `${index + 1},"${registro.nombre}","${registro.tipo}","${registro.fecha}","${registro.seleccion1}","${registro.seleccion2}"\n`;
             });
+
+            // Generar el nombre del archivo dinámico
+            const nombreInput = document.getElementById('userName').value.trim();
+            // Reemplazar espacios por guiones bajos si hay nombre, si no, usar "Registro"
+            const nombreArchivoBase = nombreInput ? nombreInput.replace(/\s+/g, '_') : 'Registro';
+            
+            // Obtener la fecha en formato AAAA-MM-DD para el nombre del archivo
+            const hoy = new Date();
+            const fechaArchivo = hoy.getFullYear() + "-" + 
+                                String(hoy.getMonth() + 1).padStart(2, '0') + "-" + 
+                                String(hoy.getDate()).padStart(2, '0');
+
+            const nombreFinal = `${nombreArchivoBase}_${fechaArchivo}.csv`;
 
             // Forzar descarga
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.setAttribute("href", url);
-            link.setAttribute("download", "registro_casos_hojas.csv");
+            link.setAttribute("download", nombreFinal);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
